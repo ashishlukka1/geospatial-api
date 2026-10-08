@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>Connaught Place</name>
+      <Point>
+        <coordinates>77.2090,28.6139,0</coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Test Zone</name>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>77.2,28.6,0 77.3,28.6,0 77.3,28.7,0 77.2,28.7,0 77.2,28.6,0</coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+  </Document>
+</kml>

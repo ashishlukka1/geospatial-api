@@ -1,8 +1,12 @@
 fastapi
 uvicorn
 sqlalchemy
+psycopg2-binary
+python-dotenv
+pydantic
 geopandas
 shapely
 pyproj
 python-multipart
 pytest
+httpx
