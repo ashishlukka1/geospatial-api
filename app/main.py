@@ -1,6 +1,11 @@
+import logging
 import os
 
 from fastapi import FastAPI
+
+# Show our INFO logs in the server output so the upload -> parse ->
+# extract -> measure -> store pipeline is visible without reading code.
+logging.basicConfig(level=logging.INFO)
 
 from app.api.files import router as files_router
 from app.db import Base, engine

@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import DateTime
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy import Float
 from sqlalchemy import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -51,5 +52,9 @@ class FeatureRecord(Base):
     geometry: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     crs: Mapped[str] = mapped_column(String(32), default="EPSG:4326")
     properties: Mapped[dict] = mapped_column(JSON, default=dict)
+    measurement_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    measurement_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    measurement_unit: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    projected_crs: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     file: Mapped["FileRecord"] = relationship(back_populates="features")

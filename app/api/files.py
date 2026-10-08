@@ -69,4 +69,4 @@ def get_measurements(file_id: str, db: Session = Depends(get_db)):
         .order_by(FeatureRecord.feature_index)
         .all()
     )
-    return {"file_id": file_id, "features": rows}
+    return features.build_measurements_response(file_id, rows)

@@ -1,3 +1,72 @@
+# Progress — Iteration 3
+
+## Iteration
+
+3 — Measurements and CRS: per-feature UTM selection, reprojection,
+polygon area (m²), line length (m), nulls for points, persisted and
+returned through the existing measurements endpoint.
+
+## What was implemented
+
+- Four nullable columns on `features`: measurement_type, measurement_value
+  (Float, full precision), measurement_unit, projected_crs. Source
+  geometry/CRS untouched. Supabase table migrated with explicit
+  `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` because `create_all()`
+  never alters existing tables — a documented reason to adopt Alembic
+  in a later iteration. Old Iteration 2 rows keep null measurements.
+- `app/services/crs.py`: `choose_utm_crs()` — representative point
+  (guaranteed inside the geometry, unlike centroid) → lon/lat →
+  `floor((lon + 180) / 6) + 1` → `32600/32700 + zone`. Raises a clear
+  ValueError beyond ±84° latitude where UTM is undefined.
+- `app/services/measure.py`: `measure_feature()` — Polygon/MultiPolygon
+  → area (m²), LineString/MultiLineString → length (m), Point/MultiPoint
+  and unknown types → None without crashing. Reprojection via
+  `GeoSeries.to_crs()` (CRS-aware, no manual coordinate math).
+- Extraction now measures each row and persists all fields in the same
+  single commit; the upload route needed no changes and stays thin.
+- Response: nested `measurement` object via new `Measurement` schema
+  with a 2-decimal validator (DB keeps full precision, e.g.
+  1177269.27501072 stored vs 1177269.28 returned).
+- `logging.basicConfig(level=logging.INFO)` in `main.py` so the
+  per-feature pipeline logs are visible in server output (Step 18 demo
+  via Swagger `/docs`, no frontend).
+- `mixed.kml` moved to Hyderabad so its zone is 44N (EPSG:32644).
+
+## Files created / changed
+
+- Created: `app/services/crs.py`, `app/services/measure.py`,
+  `tests/test_crs.py`, `tests/test_measure.py`
+- Changed: `app/models.py` (4 columns), `app/schemas.py` (Measurement,
+  FeatureResponse), `app/services/features.py` (measure + persist +
+  response builder), `app/api/files.py` (one-line response builder),
+  `app/main.py` (logging), `sample_data/mixed.kml` (Hyderabad),
+  `tests/test_measurements.py` (updated to the measured contract),
+  docs (all five)
+- No new libraries.
+
+## Verification performed
+
+- `pytest`: 24 passed (14 old + 10 new).
+- Known-answer: exact 1 km square near Hyderabad → ≈1,000,000 m²
+  (within 1%); exact 1 km line → ≈1000 m.
+- Live (port 8001): mixed.kml → COMPLETED, count 3; Polygon area
+  1177269.28 m², LineString length 1228.07 m, Point null; unknown ID → 404.
+- Supabase SQL matches the expected table exactly (area/length/NULL
+  rows, full-precision values, EPSG:32644).
+- Sanity: 0.01° × 0.01° at lat 17.4 ≈ 1062 m × 1106 m ≈ 1.175M m²,
+  within 0.3% of the measured 1.177M m².
+
+## Known issues / limitations
+
+- UTM undefined beyond ±84° latitude (upload rejected with a clear
+  message); polar regions need UPS/another projection later.
+- Antimeridian-crossing geometries get the zone of their representative
+  point — valid but potentially less accurate; documented edge case.
+- `m²` renders as `m?` on Windows console codepages; the UTF-8 API/DB
+  bytes are correct (tests assert the exact character).
+
+---
+
 # Progress — Iteration 2
 
 ## Iteration

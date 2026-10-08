@@ -18,6 +18,7 @@ from shapely.geometry import mapping
 from sqlalchemy.orm import Session
 
 from app.models import FeatureRecord
+from app.services.measure import measure_feature
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,12 @@ def to_json_safe(value: Any) -> Any:
 
 
 def extract_features(file_id: str, gdf: gpd.GeoDataFrame, crs_name: str) -> list[dict]:
-    """Build one plain dict per GeoDataFrame row for the given file."""
+    """Build one plain dict per GeoDataFrame row for the given file.
+
+    Each dict also carries the UTM measurement result (or null fields
+    for points and unsupported types). The source geometry is kept
+    unchanged; only measurement metadata is added.
+    """
     logger.info("Extracting features for file %s", file_id)
     geometry_column = gdf.geometry.name
     extracted: list[dict] = []
@@ -65,6 +71,7 @@ def extract_features(file_id: str, gdf: gpd.GeoDataFrame, crs_name: str) -> list
             for column in gdf.columns
             if column != geometry_column
         }
+        measurement = measure_feature(file_id, feature_index, geometry)
         extracted.append(
             {
                 "feature_index": feature_index,
@@ -72,6 +79,10 @@ def extract_features(file_id: str, gdf: gpd.GeoDataFrame, crs_name: str) -> list
                 "geometry": mapping(geometry) if geometry is not None else None,
                 "crs": crs_name,
                 "properties": properties,
+                "projected_crs": measurement["projected_crs"] if measurement else None,
+                "measurement_type": measurement["type"] if measurement else None,
+                "measurement_value": measurement["value"] if measurement else None,
+                "measurement_unit": measurement["unit"] if measurement else None,
             }
         )
     logger.info("Extracted %d features for file %s", len(extracted), file_id)
@@ -89,6 +100,10 @@ def save_features(db: Session, file_id: str, extracted: list[dict]) -> int:
             geometry=item["geometry"],
             crs=item["crs"],
             properties=item["properties"],
+            projected_crs=item["projected_crs"],
+            measurement_type=item["measurement_type"],
+            measurement_value=item["measurement_value"],
+            measurement_unit=item["measurement_unit"],
         )
         for item in extracted
     ]
@@ -96,3 +111,29 @@ def save_features(db: Session, file_id: str, extracted: list[dict]) -> int:
     db.commit()
     logger.info("Stored %d features for file %s", len(records), file_id)
     return len(records)
+
+
+def build_measurements_response(file_id: str, rows: list[FeatureRecord]) -> dict:
+    """Shape stored rows into the measurements response with nested measurement."""
+    features = []
+    for row in rows:
+        if row.measurement_type is None:
+            measurement = None
+        else:
+            measurement = {
+                "type": row.measurement_type,
+                "value": row.measurement_value,
+                "unit": row.measurement_unit,
+            }
+        features.append(
+            {
+                "feature_index": row.feature_index,
+                "geometry_type": row.geometry_type,
+                "geometry": row.geometry,
+                "crs": row.crs,
+                "properties": row.properties,
+                "projected_crs": row.projected_crs,
+                "measurement": measurement,
+            }
+        )
+    return {"file_id": file_id, "features": features}

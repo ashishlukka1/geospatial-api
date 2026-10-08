@@ -62,7 +62,7 @@ def test_features_persisted_in_database(client, db_session):
 
 
 def test_get_measurements_endpoint(client):
-    """Test 5: GET measurements returns 200 with GeoJSON and null measurement."""
+    """Test 5: GET measurements returns 200 with GeoJSON and measurements."""
     file_id = upload_mixed_kml(client)
     response = client.get(f"/api/files/{file_id}/measurements/")
     assert response.status_code == 200
@@ -72,7 +72,10 @@ def test_get_measurements_endpoint(client):
     first = body["features"][0]
     assert first["geometry"]["type"] == "Polygon"
     assert first["properties"]["Name"] == "Campus"
-    assert all(item["measurement"] is None for item in body["features"])
+    assert first["projected_crs"] == "EPSG:32644"
+    assert first["measurement"]["type"] == "area"
+    assert body["features"][1]["measurement"]["type"] == "length"
+    assert body["features"][2]["measurement"] is None
     assert all(item["crs"] == "EPSG:4326" for item in body["features"])
 
 

@@ -1,6 +1,6 @@
 """Pydantic models for API requests and responses."""
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models import FileStatus
 
@@ -17,8 +17,25 @@ class FileResponse(BaseModel):
     status: FileStatus
 
 
+class Measurement(BaseModel):
+    """A calculated area or length. Value is rounded for presentation.
+
+    The database keeps full precision; only the API response rounds.
+    """
+
+    type: str
+    value: float
+    unit: str
+
+    @field_validator("value")
+    @classmethod
+    def round_to_two_places(cls, value: float) -> float:
+        """Round the presented value to two decimals, keeping the unit."""
+        return round(value, 2)
+
+
 class FeatureResponse(BaseModel):
-    """One stored feature. Measurement stays None until Iteration 3."""
+    """One stored feature with its measurement (null for points)."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -27,7 +44,8 @@ class FeatureResponse(BaseModel):
     geometry: dict | None = None
     crs: str
     properties: dict = {}
-    measurement: float | None = None
+    projected_crs: str | None = None
+    measurement: Measurement | None = None
 
 
 class MeasurementsResponse(BaseModel):

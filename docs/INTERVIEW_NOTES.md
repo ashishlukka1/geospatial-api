@@ -1,3 +1,49 @@
+# Interview Notes — Iteration 3
+
+## Why degrees cannot be measured directly
+
+One degree of longitude is ~111 km at the equator but ~0 km at the
+poles. EPSG:4326 coordinates are angles, not meters, so area/length
+must be computed after projecting onto a flat meter grid.
+
+## How the UTM zone is calculated
+
+Take a point inside the feature, read lon/lat, then
+`zone = floor((lon + 180) / 6) + 1`. Northern hemisphere →
+`32600 + zone`, southern → `32700 + zone`. Hyderabad (78.47°E) gives
+zone 44 → EPSG:32644; Sydney (151.21°E, 33.87°S) gives zone 56 →
+EPSG:32756.
+
+## Why representative_point() is used
+
+The zone must come from a point actually on the feature. `centroid()`
+of a concave polygon can lie outside it (even in another zone);
+`representative_point()` is guaranteed inside, so the zone is always
+correct for the feature.
+
+## The measurement pipeline
+
+WGS84 geometry → `choose_utm_crs()` → `GeoSeries.to_crs()` reproject
+(CRS-aware, never manual math) → Shapely `.area`/`.length` on the
+meter grid. Polygon/MultiPolygon → area in m²; LineString/
+MultiLineString → length in m; points and unknown types → nulls.
+
+## Why the source geometry remains EPSG:4326
+
+The database stores what the user uploaded. `projected_crs` is
+metadata explaining the derivation — anyone can reproject the stored
+GeoJSON with the stored CRS and reproduce the number.
+
+## Supported types and limits
+
+Measured: Polygon, MultiPolygon, LineString, MultiLineString.
+Null (by design): Point, MultiPoint, anything else — never a crash.
+Rejected with a message: |lat| > 84 (UTM undefined). Edge case on
+record: antimeridian-crossing shapes use their representative point's
+zone.
+
+---
+
 # Interview Notes — Iteration 2
 
 ## The features table

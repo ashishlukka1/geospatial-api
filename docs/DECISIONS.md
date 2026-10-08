@@ -43,3 +43,24 @@ measurement work in a later iteration.
   DBs per module silently fought over the single `get_db` override.
 - `measurement` typed `float | None`, always `None`: reserves the
   contract for Iteration 3 without calculating anything now.
+
+## Iteration 3 additions
+
+- Why UTM: degrees are not meters — longitude degrees shrink toward the
+  poles, so measuring in EPSG:4326 is meaningless. UTM projects a narrow
+  6° slice onto a flat meter grid where plain area/length is correct.
+- Why `representative_point()`: guaranteed inside the geometry, while
+  `centroid()` can fall outside concave shapes and pick the wrong zone.
+- Why the source stays EPSG:4326: transparency and reproducibility — the
+  stored geometry is what the user uploaded; `projected_crs` records how
+  the number was derived so anyone can recompute it.
+- Why points have no measurement: a point has zero area and length by
+  definition; nulls (not zeros) distinguish "not applicable" from a
+  real zero measurement.
+- Why round only the response: the DB keeps full float precision for
+  future math; the API shows 2 decimals because nobody reads 14 digits.
+- Manual `ALTER TABLE` this once: `create_all()` cannot add columns to
+  an existing table, which is exactly the pain Alembic will solve later.
+- Known limits kept small on purpose: poles rejected with a clear error
+  (|lat| > 84, UTM undefined there), antimeridian documented as an edge
+  case, no polar/antimeridian framework built yet.

@@ -1,6 +1,15 @@
 # Changelog
 
-## Iteration 2
+## Iteration 3
+
+- Added measurement columns to `features` (type/value/unit, projected CRS).
+- Added UTM selection (`app/services/crs.py`) and area/length
+  measurement (`app/services/measure.py`).
+- Uploads now measure every feature; points and unsupported types
+  store nulls.
+- Measurements endpoint returns nested `measurement` (2-decimal
+  presentation, full precision in DB).
+- Added 10 new tests (24 total passing).
 
 - Added `features` table with one-to-many relationship to `files`.
 - Added per-feature extraction (GeoJSON geometry, CRS, JSON-safe

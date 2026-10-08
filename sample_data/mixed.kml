@@ -7,7 +7,7 @@
       <Polygon>
         <outerBoundaryIs>
           <LinearRing>
-            <coordinates>77.2,28.6,0 77.3,28.6,0 77.3,28.7,0 77.2,28.7,0 77.2,28.6,0</coordinates>
+            <coordinates>78.45,17.38,0 78.46,17.38,0 78.46,17.39,0 78.45,17.39,0 78.45,17.38,0</coordinates>
           </LinearRing>
         </outerBoundaryIs>
       </Polygon>
@@ -16,12 +16,12 @@
       <name>Main Path</name>
       <description>Walkway</description>
       <LineString>
-        <coordinates>77.21,28.61,0 77.22,28.62,0 77.23,28.63,0</coordinates>
+        <coordinates>78.451,17.381,0 78.455,17.385,0 78.459,17.389,0</coordinates>
       </LineString>
     </Placemark>
     <Placemark>
       <Point>
-        <coordinates>77.2090,28.6139,0</coordinates>
+        <coordinates>78.471,17.385,0</coordinates>
       </Point>
     </Placemark>
   </Document>
