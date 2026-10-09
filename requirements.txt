@@ -8,5 +8,6 @@ geopandas
 shapely
 pyproj
 python-multipart
+jinja2
 pytest
 httpx

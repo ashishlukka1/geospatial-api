@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Geospatial API — KML Viewer (Iteration 3.5)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+    
+
+  <main>
+    <section class="panel">
+      <h2>1. Upload KML</h2>
+      <form id="upload-form">
+        <input id="file-input" type="file" accept=".kml" />
+        <button id="upload-btn" type="submit">Upload</button>
+      </form>
+      <div id="upload-status" class="status" role="status">No file uploaded yet.</div>
+
+      <h2>2. File metadata</h2>
+      <div id="file-meta" class="mono">—</div>
+
+      <h2>3. Measurements</h2>
+      <div class="table-wrap">
+        <table id="measure-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Type</th><th>CRS</th><th>Projected</th><th>Measure</th><th>Value</th><th>Unit</th>
+            </tr>
+          </thead>
+          <tbody><tr><td colspan="7" class="muted">No data yet.</td></tr></tbody>
+        </table>
+      </div>
+
+      <h2>Activity</h2>
+      <ul id="activity" class="mono"></ul>
+    </section>
+
+    <section class="map-panel">
+      <div id="map"></div>
+      <p class="hint">Polygons: blue &middot; Lines: orange &middot; Points: red. Click a feature for properties + measurement.</p>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

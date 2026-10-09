@@ -1,7 +1,10 @@
 import logging
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 # Show our INFO logs in the server output so the upload -> parse ->
 # extract -> measure -> store pipeline is visible without reading code.
@@ -24,10 +27,14 @@ if os.getenv("TESTING") != "1":
 
 app.include_router(files_router)
 
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+templates = Jinja2Templates(directory="app/templates")
 
-@app.get("/")
-def read_root():
-    return {"message": "Geospatial File Measurement API is running"}
+
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    """Serve the Iteration 3.5 test/visualization page."""
+    return templates.TemplateResponse(request, "index.html")
 
 
 @app.get("/health")
