@@ -28,9 +28,21 @@ function log(method, url, status, extra = "") {
   activityEl.prepend(li);
 }
 
+let toastTimer = null;
+
 function setStatus(text, cls = "") {
   statusEl.textContent = text;
-  statusEl.className = `status ${cls}`;
+  statusEl.className = `toast ${cls}`;
+  statusEl.hidden = false;
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+  }
+  if (cls === "ok") {
+    toastTimer = setTimeout(() => {
+      statusEl.hidden = true;
+    }, 4000);
+  }
 }
 
 function fmtMeasurement(m) {
@@ -140,12 +152,19 @@ function renderMap(features) {
   };
   try {
     const layer = L.geoJSON(gj, {
-      style: (feat) =>
-        feat.geometry.type.includes("Polygon")
-          ? { color: "blue", weight: 2 }
-          : { color: "orange", weight: 3 },
+      // Note: Leaflet applies this style callback to every layer via
+      // resetStyle(), including CircleMarkers from pointToLayer, so
+      // points need their own branch or they inherit the line color.
+      style: (feat) => {
+        const type = feat.geometry.type;
+        if (type.includes("Polygon")) return { color: "blue", weight: 2 };
+        if (type === "Point" || type === "MultiPoint") {
+          return { color: "red", fillColor: "red", weight: 2 };
+        }
+        return { color: "orange", weight: 3 };
+      },
       pointToLayer: (feat, latlng) =>
-        L.circleMarker(latlng, { radius: 6, color: "red", fillOpacity: 0.9 }),
+        L.circleMarker(latlng, { radius: 6, color: "red", fillColor: "red", fillOpacity: 0.9 }),
       onEachFeature: (feat, layer) => {
         const orig = features.find((f) => f.feature_index === feat.properties._index);
         if (orig) layer.bindPopup(popupHtml(orig));

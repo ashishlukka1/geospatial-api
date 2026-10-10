@@ -209,50 +209,20 @@ rounded to two decimals in the response; the database keeps full precision.
 
 ## 8. Examples
 
-Upload (PowerShell):
+Viewer screenshots of extracted file details (metadata, features table
+and map visualization):
 
-```powershell
-curl -F "file=@sample_data/mixed.kml" http://127.0.0.1:8000/api/files/
-```
+### KML upload (`mixed.kml`: Polygon + LineString + Point)
 
-Success `200` (actual shape; IDs differ per upload):
+![KML extraction example](mixed.png)
 
-```json
-{
-  "id": "89a2de9e-cdb5-4619-8652-19b801a36102",
-  "filename": "sample.kml",
-  "feature_count": 2,
-  "crs": "EPSG:4326",
-  "status": "COMPLETED"
-}
-```
+### Point features from a zipped Shapefile (`State_Capitals.zip`, custom CRS)
 
-One feature from `GET .../measurements/` (trimmed; actual response
-verified against the implementation):
+![Shapefile point extraction example](points.png)
 
-```json
-{
-  "feature_index": 1,
-  "geometry_type": "Polygon",
-  "geometry": { "type": "Polygon", "coordinates": [...] },
-  "display_geometry": { "type": "Polygon", "coordinates": [...] },
-  "crs": "EPSG:4326",
-  "properties": { "Name": "Test Zone", "...": null },
-  "projected_crs": "EPSG:32643",
-  "measurement": { "type": "area", "value": 108395988.61, "unit": "m²" }
-}
-```
+### Polygon features from a zipped Shapefile (`polygons.zip`)
 
-A point feature returns `"measurement": null`. Error shapes:
-
-```json
-// 400 unsupported extension
-{ "detail": "Only .kml and .zip files are accepted." }
-// 404 unknown id
-{ "detail": "File not found." }
-// 500 unexpected failure (never leaks internals)
-{ "detail": "Could not process the uploaded file." }
-```
+![Shapefile polygon extraction example](shpfile.png)
 
 ## 9. Supported formats
 
