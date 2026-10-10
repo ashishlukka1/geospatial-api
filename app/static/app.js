@@ -1,10 +1,12 @@
 /* Iteration 3.5 viewer: vanilla JS, talks only to the real API. */
 const form = document.getElementById("upload-form");
 const fileInput = document.getElementById("file-input");
+const uploadBtn = document.getElementById("upload-btn");
 const statusEl = document.getElementById("upload-status");
 const metaEl = document.getElementById("file-meta");
 const tbody = document.querySelector("#measure-table tbody");
 const activityEl = document.getElementById("activity");
+const PLACEHOLDER_ROW = '<tr><td colspan="7" class="muted">No data yet.</td></tr>';
 
 const map = L.map("map").setView([20.59, 78.96], 5);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -30,6 +32,10 @@ function fmtMeasurement(m) {
 
 function renderTable(features) {
   tbody.innerHTML = "";
+  if (!Array.isArray(features) || features.length === 0) {
+    tbody.innerHTML = PLACEHOLDER_ROW;
+    return;
+  }
   for (const f of features) {
     const [mType, mValue, mUnit] = fmtMeasurement(f.measurement);
     const tr = document.createElement("tr");
@@ -59,31 +65,50 @@ function popupHtml(f) {
   return `<b>#${f.feature_index} ${f.geometry_type ?? ""}</b><br>${props}<br>measurement: ${mType} ${mValue} ${mUnit}`;
 }
 
+function isRenderableGeometry(g) {
+  return (
+    g &&
+    typeof g.type === "string" &&
+    Array.isArray(g.coordinates) &&
+    g.coordinates.length > 0
+  );
+}
+
 function renderMap(features) {
-  if (geoLayer) map.removeLayer(geoLayer);
+  if (geoLayer) {
+    map.removeLayer(geoLayer);
+    geoLayer = null;
+  }
+  if (!Array.isArray(features) || features.length === 0) return 0;
+  const renderable = features.filter((f) => isRenderableGeometry(f.display_geometry || f.geometry));
+  const skipped = features.length - renderable.length;
   const gj = {
     type: "FeatureCollection",
-    features: features
-      .filter((f) => f.geometry)
-      .map((f) => ({
-        type: "Feature",
-        geometry: f.geometry,
-        properties: { ...f.properties, _index: f.feature_index, _type: f.geometry_type },
-      })),
+    features: renderable.map((f) => ({
+      type: "Feature",
+      geometry: f.display_geometry || f.geometry,
+      properties: { ...f.properties, _index: f.feature_index, _type: f.geometry_type },
+    })),
   };
-  geoLayer = L.geoJSON(gj, {
-    style: (feat) =>
-      feat.geometry.type.includes("Polygon")
-        ? { color: "blue", weight: 2 }
-        : { color: "orange", weight: 3 },
-    pointToLayer: (feat, latlng) =>
-      L.circleMarker(latlng, { radius: 6, color: "red", fillOpacity: 0.9 }),
-    onEachFeature: (feat, layer) => {
-      const orig = features.find((f) => f.feature_index === feat.properties._index);
-      if (orig) layer.bindPopup(popupHtml(orig));
-    },
-  }).addTo(map);
+  try {
+    geoLayer = L.geoJSON(gj, {
+      style: (feat) =>
+        feat.geometry.type.includes("Polygon")
+          ? { color: "blue", weight: 2 }
+          : { color: "orange", weight: 3 },
+      pointToLayer: (feat, latlng) =>
+        L.circleMarker(latlng, { radius: 6, color: "red", fillOpacity: 0.9 }),
+      onEachFeature: (feat, layer) => {
+        const orig = features.find((f) => f.feature_index === feat.properties._index);
+        if (orig) layer.bindPopup(popupHtml(orig));
+      },
+    }).addTo(map);
+  } catch (err) {
+    log("MAP", "render", "error", String(err && err.message ? err.message : err));
+    return -1;
+  }
   if (geoLayer.getBounds().isValid()) map.fitBounds(geoLayer.getBounds().pad(0.2));
+  return skipped;
 }
 
 async function fetchJson(method, url, body) {
@@ -104,9 +129,17 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const file = fileInput.files[0];
   if (!file) {
-    setStatus("Select a .kml file first.", "err");
+    setStatus("Select a .kml or .zip file first.", "err");
     return;
   }
+  // Clear stale results so a failed upload never looks successful.
+  metaEl.textContent = "—";
+  tbody.innerHTML = PLACEHOLDER_ROW;
+  if (geoLayer) {
+    map.removeLayer(geoLayer);
+    geoLayer = null;
+  }
+  uploadBtn.disabled = true;
   setStatus(`Uploading ${file.name} ...`, "loading");
   try {
     const fd = new FormData();
@@ -117,10 +150,18 @@ form.addEventListener("submit", async (e) => {
     metaEl.textContent = JSON.stringify(info, null, 2);
     const meas = await fetchJson("GET", `/api/files/${uploaded.id}/measurements/`);
     renderTable(meas.features);
-    renderMap(meas.features);
-    setStatus(`Done. ${meas.features.length} features shown.`, "ok");
+    const skipped = renderMap(meas.features);
+    if (skipped === -1) {
+      setStatus(`Done with map error. ${meas.features.length} features listed; map render failed (see Activity).`, "err");
+    } else if (skipped > 0) {
+      setStatus(`Done. ${meas.features.length} features shown, ${skipped} without usable map geometry.`, "ok");
+    } else {
+      setStatus(`Done. ${meas.features.length} features shown.`, "ok");
+    }
   } catch (err) {
     setStatus(`Error: ${err.message}`, "err");
     log("ERROR", "", "", String(err.message));
+  } finally {
+    uploadBtn.disabled = false;
   }
 });

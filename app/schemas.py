@@ -42,6 +42,7 @@ class FeatureResponse(BaseModel):
     feature_index: int
     geometry_type: str | None = None
     geometry: dict | None = None
+    display_geometry: dict | None = None
     crs: str
     properties: dict = {}
     projected_crs: str | None = None

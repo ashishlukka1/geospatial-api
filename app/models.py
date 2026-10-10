@@ -31,7 +31,7 @@ class FileRecord(Base):
     filename: Mapped[str] = mapped_column(String(255))
     status: Mapped[FileStatus] = mapped_column(SqlEnum(FileStatus), default=FileStatus.PROCESSING)
     feature_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    crs: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    crs: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -50,7 +50,7 @@ class FeatureRecord(Base):
     feature_index: Mapped[int] = mapped_column(Integer)
     geometry_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
     geometry: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    crs: Mapped[str] = mapped_column(String(32), default="EPSG:4326")
+    crs: Mapped[str] = mapped_column(Text, default="EPSG:4326")
     properties: Mapped[dict] = mapped_column(JSON, default=dict)
     measurement_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
     measurement_value: Mapped[float | None] = mapped_column(Float, nullable=True)

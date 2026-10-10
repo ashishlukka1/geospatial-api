@@ -14,7 +14,7 @@ from typing import Any
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from shapely.geometry import mapping
+from shapely.geometry import mapping, shape
 from sqlalchemy.orm import Session
 
 from app.models import FeatureRecord
@@ -34,13 +34,14 @@ def to_json_safe(value: Any) -> Any:
     if isinstance(value, int):
         return value
     if isinstance(value, float):
-        return None if math.isnan(value) else value
+        return value if math.isfinite(value) else None
     if isinstance(value, str):
         return value
     if isinstance(value, np.integer):
         return int(value)
     if isinstance(value, np.floating):
-        return None if math.isnan(float(value)) else float(value)
+        as_float = float(value)
+        return as_float if math.isfinite(as_float) else None
     if isinstance(value, np.bool_):
         return bool(value)
     if isinstance(value, np.ndarray):
@@ -71,7 +72,7 @@ def extract_features(file_id: str, gdf: gpd.GeoDataFrame, crs_name: str) -> list
             for column in gdf.columns
             if column != geometry_column
         }
-        measurement = measure_feature(file_id, feature_index, geometry)
+        measurement = measure_feature(file_id, feature_index, geometry, crs_name)
         extracted.append(
             {
                 "feature_index": feature_index,
@@ -89,9 +90,9 @@ def extract_features(file_id: str, gdf: gpd.GeoDataFrame, crs_name: str) -> list
     return extracted
 
 
-def save_features(db: Session, file_id: str, extracted: list[dict]) -> int:
-    """Persist extracted feature dicts as FeatureRecord rows for the file."""
-    records = [
+def build_feature_records(file_id: str, extracted: list[dict]) -> list[FeatureRecord]:
+    """Turn extracted feature dicts into unsaved FeatureRecord objects."""
+    return [
         FeatureRecord(
             id=str(uuid.uuid4()),
             file_id=file_id,
@@ -107,10 +108,34 @@ def save_features(db: Session, file_id: str, extracted: list[dict]) -> int:
         )
         for item in extracted
     ]
+
+
+def save_features(db: Session, file_id: str, extracted: list[dict]) -> int:
+    """Persist extracted feature dicts as FeatureRecord rows for the file."""
+    records = build_feature_records(file_id, extracted)
     db.add_all(records)
     db.commit()
     logger.info("Stored %d features for file %s", len(records), file_id)
     return len(records)
+
+
+def to_display_geometry(geometry: dict | None, source_crs: str | None) -> dict | None:
+    """Reproject stored source geometry to EPSG:4326 for Leaflet display.
+
+    The stored source geometry and measurements are never changed; this
+    only produces a display copy. Returns the original geometry when it
+    is already EPSG:4326 or when reprojection fails.
+    """
+    if not geometry or not source_crs or str(source_crs) == "EPSG:4326":
+        return geometry
+    try:
+        reprojected = (
+            gpd.GeoSeries([shape(geometry)], crs=source_crs).to_crs("EPSG:4326").iloc[0]
+        )
+        return mapping(reprojected)
+    except Exception:
+        logger.warning("Could not reproject geometry from %s for display", source_crs)
+        return geometry
 
 
 def build_measurements_response(file_id: str, rows: list[FeatureRecord]) -> dict:
@@ -130,6 +155,7 @@ def build_measurements_response(file_id: str, rows: list[FeatureRecord]) -> dict
                 "feature_index": row.feature_index,
                 "geometry_type": row.geometry_type,
                 "geometry": row.geometry,
+                "display_geometry": to_display_geometry(row.geometry, row.crs),
                 "crs": row.crs,
                 "properties": row.properties,
                 "projected_crs": row.projected_crs,

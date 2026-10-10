@@ -8,14 +8,16 @@
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-
-    
+  <header>
+    <h1>Geospatial File Measurement API — Test Page</h1>
+    <p class="sub">Upload KML or zipped Shapefile &rarr; inspect metadata, measurements, and map. Uses the real API only.</p>
+  </header>
 
   <main>
     <section class="panel">
-      <h2>1. Upload KML</h2>
+      <h2>1. Upload file (.kml or .zip)</h2>
       <form id="upload-form">
-        <input id="file-input" type="file" accept=".kml" />
+        <input id="file-input" type="file" accept=".kml,.zip" />
         <button id="upload-btn" type="submit">Upload</button>
       </form>
       <div id="upload-status" class="status" role="status">No file uploaded yet.</div>
