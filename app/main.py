@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -10,21 +11,37 @@ from fastapi.templating import Jinja2Templates
 # Show our INFO logs in the server output so the upload -> parse ->
 # extract -> measure -> store pipeline is visible without reading code.
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from app.api.files import router as files_router
 from app.db import Base, engine
 from app.models import FileRecord  # noqa: F401 - registers the files table
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Create tables once the application starts, not at import time.
+
+    Importing app.main must never open a network connection: on serverless
+    platforms an import-time connect failure (or hang) takes down every
+    route, including static pages. A startup failure here still propagates
+    loudly instead of being skipped.
+    """
+    # Skipped during tests, which use their own throwaway database
+    # instead of PostgreSQL.
+    if os.getenv("TESTING") != "1":
+        logger.info("Ensuring database tables exist")
+        Base.metadata.create_all(bind=engine)
+    yield
+
+
 app = FastAPI(
     title="Geospatial File Measurement API",
     description="API for uploading geospatial files and retrieving measurements.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
-# Create tables when the application starts. Skipped during tests,
-# which use their own throwaway database instead of PostgreSQL.
-if os.getenv("TESTING") != "1":
-    Base.metadata.create_all(bind=engine)
 
 app.include_router(files_router)
 
