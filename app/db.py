@@ -15,9 +15,19 @@ load_dotenv()
 
 
 def _normalize_url(url: str) -> str:
-    """Accept the Heroku-style postgres:// scheme SQLAlchemy rejects."""
+    """Pin the driver SQLAlchemy would otherwise choose by version default.
+
+    Bare postgresql:// (and Heroku-style postgres://) resolves to whatever
+    DBAPI the installed SQLAlchemy prefers — newer releases default to
+    psycopg v3, which is not a project dependency and broke the Vercel
+    import with ModuleNotFoundError. Force psycopg2, which is installed
+    and covered by the test suite. URLs that already name a driver pass
+    through untouched.
+    """
     if url.startswith("postgres://"):
-        return "postgresql://" + url[len("postgres://"):]
+        url = "postgresql://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg2://" + url[len("postgresql://"):]
     return url
 
 

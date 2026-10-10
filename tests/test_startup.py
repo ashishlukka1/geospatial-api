@@ -51,9 +51,26 @@ def test_missing_database_url_names_environment():
 
 
 def test_normalize_postgres_scheme():
-    assert _normalize_url("postgres://u:p@h:5432/db") == "postgresql://u:p@h:5432/db"
-    assert _normalize_url("postgresql://u:p@h:5432/db") == "postgresql://u:p@h:5432/db"
+    assert _normalize_url("postgres://u:p@h:5432/db") == "postgresql+psycopg2://u:p@h:5432/db"
+    assert _normalize_url("postgresql://u:p@h:5432/db") == "postgresql+psycopg2://u:p@h:5432/db"
+    assert (
+        _normalize_url("postgresql+psycopg2://u:p@h:5432/db")
+        == "postgresql+psycopg2://u:p@h:5432/db"
+    )
     assert _normalize_url("sqlite:///x.db") == "sqlite:///x.db"
+
+
+def test_bare_postgres_url_uses_psycopg2_driver():
+    """Vercel regression: newer SQLAlchemy defaults bare postgresql:// to
+    psycopg v3 (not installed) -> ModuleNotFoundError at import. The
+    normalized URL must resolve to the installed psycopg2 driver without
+    opening any connection."""
+    from sqlalchemy import create_engine
+
+    for raw in ("postgresql://u:p@127.0.0.1:9/db", "postgres://u:p@127.0.0.1:9/db"):
+        engine = create_engine(_normalize_url(raw))
+        assert engine.dialect.driver == "psycopg2"
+        engine.dispose()
 
 
 def test_lifespan_skips_table_creation_in_testing(client, monkeypatch):
