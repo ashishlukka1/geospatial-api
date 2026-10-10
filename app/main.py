@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -27,8 +28,11 @@ if os.getenv("TESTING") != "1":
 
 app.include_router(files_router)
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-templates = Jinja2Templates(directory="app/templates")
+# Resolved from this file's location so templates/static work no matter
+# which directory the server is started from (including serverless).
+APP_DIR = Path(__file__).resolve().parent
+app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
+templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 
 
 @app.get("/", response_class=HTMLResponse)

@@ -11,7 +11,15 @@ from app.models import FeatureRecord, FileRecord, FileStatus
 
 logger = logging.getLogger(__name__)
 
-UPLOAD_DIR = Path("uploads")
+# Uploaded bytes are kept only for parsing (features live in the DB).
+# Resolved from this file's location; override with UPLOAD_DIR, e.g.
+# UPLOAD_DIR=/tmp/uploads on read-only serverless filesystems.
+UPLOAD_DIR = Path(
+    os.getenv(
+        "UPLOAD_DIR",
+        str(Path(__file__).resolve().parents[2] / "uploads"),
+    )
+)
 ALLOWED_EXTENSIONS = {".kml", ".zip"}
 
 # Hard cap on the raw request body we will buffer. Larger uploads are
