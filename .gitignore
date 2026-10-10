@@ -3,6 +3,8 @@ __pycache__/
 *.pyc
 .env
 *.db
+*.log
+.coverage
 uploads/
 logs/
 .pytest_cache/

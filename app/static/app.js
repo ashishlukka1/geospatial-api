@@ -6,7 +6,15 @@ const statusEl = document.getElementById("upload-status");
 const metaEl = document.getElementById("file-meta");
 const tbody = document.querySelector("#measure-table tbody");
 const activityEl = document.getElementById("activity");
+const fileNameEl = document.getElementById("file-name");
 const PLACEHOLDER_ROW = '<tr><td colspan="7" class="muted">No data yet.</td></tr>';
+const FILE_PROMPT = "No file selected (.kml or .zip)";
+
+fileInput.addEventListener("change", () => {
+  fileNameEl.textContent = fileInput.files[0] ? fileInput.files[0].name : FILE_PROMPT;
+});
+
+window.addEventListener("resize", () => map.invalidateSize());
 
 const map = L.map("map").setView([20.59, 78.96], 5);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -30,6 +38,44 @@ function fmtMeasurement(m) {
   return [m.type ?? "—", m.value ?? "—", m.unit ?? "—"];
 }
 
+function shortCrs(value) {
+  if (value == null || value === "") return "—";
+  const text = String(value);
+  return text.length <= 24 ? text : "Custom CRS";
+}
+
+function metaRow(label, value) {
+  const text = value == null || value === "" ? "—" : String(value);
+  const row = document.createElement("div");
+  row.className = "meta-row";
+  const dt = document.createElement("dt");
+  dt.textContent = label;
+  const dd = document.createElement("dd");
+  dd.textContent = text;
+  dd.title = text;
+  row.appendChild(dt);
+  row.appendChild(dd);
+  return row;
+}
+
+function renderMeta(info) {
+  metaEl.innerHTML = "";
+  const grid = document.createElement("dl");
+  grid.className = "meta-grid";
+  if (!info || typeof info !== "object") {
+    grid.appendChild(metaRow("Status", "No file uploaded yet."));
+  } else {
+    const order = ["id", "filename", "status", "feature_count", "crs"];
+    for (const key of order) {
+      if (key in info) grid.appendChild(metaRow(key, info[key]));
+    }
+    for (const key of Object.keys(info)) {
+      if (!order.includes(key)) grid.appendChild(metaRow(key, info[key]));
+    }
+  }
+  metaEl.appendChild(grid);
+}
+
 function renderTable(features) {
   tbody.innerHTML = "";
   if (!Array.isArray(features) || features.length === 0) {
@@ -40,17 +86,19 @@ function renderTable(features) {
     const [mType, mValue, mUnit] = fmtMeasurement(f.measurement);
     const tr = document.createElement("tr");
     const cells = [
-      f.feature_index,
-      f.geometry_type ?? "—",
-      f.crs ?? "—",
-      f.projected_crs ?? "null",
-      mType === "—" ? "null" : mType,
-      mValue,
-      mUnit,
+      [f.feature_index, null],
+      [f.geometry_type ?? "—", null],
+      [shortCrs(f.crs), f.crs == null ? null : String(f.crs)],
+      [f.projected_crs == null ? "null" : shortCrs(f.projected_crs),
+       f.projected_crs == null ? null : String(f.projected_crs)],
+      [mType === "—" ? "null" : mType, null],
+      [mValue, null],
+      [mUnit, null],
     ];
-    for (const c of cells) {
+    for (const [display, full] of cells) {
       const td = document.createElement("td");
-      td.textContent = c;
+      td.textContent = display;
+      td.title = full ?? String(display);
       tr.appendChild(td);
     }
     tbody.appendChild(tr);
@@ -91,7 +139,7 @@ function renderMap(features) {
     })),
   };
   try {
-    geoLayer = L.geoJSON(gj, {
+    const layer = L.geoJSON(gj, {
       style: (feat) =>
         feat.geometry.type.includes("Polygon")
           ? { color: "blue", weight: 2 }
@@ -102,12 +150,15 @@ function renderMap(features) {
         const orig = features.find((f) => f.feature_index === feat.properties._index);
         if (orig) layer.bindPopup(popupHtml(orig));
       },
-    }).addTo(map);
+    });
+    layer.addTo(map);
+    geoLayer = layer;
   } catch (err) {
     log("MAP", "render", "error", String(err && err.message ? err.message : err));
     return -1;
   }
   if (geoLayer.getBounds().isValid()) map.fitBounds(geoLayer.getBounds().pad(0.2));
+  map.invalidateSize();
   return skipped;
 }
 
@@ -133,7 +184,7 @@ form.addEventListener("submit", async (e) => {
     return;
   }
   // Clear stale results so a failed upload never looks successful.
-  metaEl.textContent = "—";
+  renderMeta(null);
   tbody.innerHTML = PLACEHOLDER_ROW;
   if (geoLayer) {
     map.removeLayer(geoLayer);
@@ -147,12 +198,12 @@ form.addEventListener("submit", async (e) => {
     const uploaded = await fetchJson("POST", "/api/files/", { method: "POST", body: fd });
     setStatus(`Uploaded. file_id=${uploaded.id}`, "ok");
     const info = await fetchJson("GET", `/api/files/${uploaded.id}/`);
-    metaEl.textContent = JSON.stringify(info, null, 2);
+    renderMeta(info);
     const meas = await fetchJson("GET", `/api/files/${uploaded.id}/measurements/`);
     renderTable(meas.features);
     const skipped = renderMap(meas.features);
     if (skipped === -1) {
-      setStatus(`Done with map error. ${meas.features.length} features listed; map render failed (see Activity).`, "err");
+      setStatus(`Done with map error. ${meas.features.length} features listed; map render failed.`, "err");
     } else if (skipped > 0) {
       setStatus(`Done. ${meas.features.length} features shown, ${skipped} without usable map geometry.`, "ok");
     } else {
