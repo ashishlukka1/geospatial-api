@@ -58,7 +58,6 @@ aereo-2/
 │   └── static/{app.js,style.css}
 ├── tests/                 # pytest suite (SQLite, synthetic fixtures; see §13)
 ├── sample_data/           # sample.kml, mixed.kml, polygons.zip
-├── docs/                  # working notes (CHANGELOG, DECISIONS, PROGRESS, TASKS, INTERVIEW_NOTES)
 ├── requirements.txt
 └── .env                   # NOT committed; holds DATABASE_URL (see §5)
 ```
@@ -214,15 +213,15 @@ and map visualization):
 
 ### KML upload (`mixed.kml`: Polygon + LineString + Point)
 
-![KML extraction example](mixed.png)
+![KML extraction example](images/mixed.png)
 
 ### Point features from a zipped Shapefile (`State_Capitals.zip`, custom CRS)
 
-![Shapefile point extraction example](points.png)
+![Shapefile point extraction example](images/points.png)
 
 ### Polygon features from a zipped Shapefile (`polygons.zip`)
 
-![Shapefile polygon extraction example](shpfile.png)
+![Shapefile polygon extraction example](images/shpfile.png)
 
 ## 9. Supported formats
 
